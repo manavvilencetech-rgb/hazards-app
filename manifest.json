@@ -1,25 +1,21 @@
 {
   "name": "खोजो HAZARDS",
   "short_name": "खोजो HAZARDS",
-  "description": "HIRA digital tool – hazards, controls, PPE and risk in seconds.",
-  "start_url": ".",
-  "scope": ".",
+  "start_url": "/hazards-app/",
+  "scope": "/hazards-app/",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#0a2a66",
   "theme_color": "#0a2a66",
   "icons": [
     {
       "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     }
   ]
 }
