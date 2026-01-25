@@ -1,50 +1,48 @@
-const CACHE_NAME = "hira-app-cache-v2";
-const BASE_PATH = "/hazards-app/";
+const CACHE_NAME = "hira-shell-v1";
+const BASE = "/hazards-app/";
 
-const FILES_TO_CACHE = [
-  BASE_PATH,
-  BASE_PATH + "index.html",
-  BASE_PATH + "manifest.json",
-  BASE_PATH + "icon-192.png",
-  BASE_PATH + "icon-512.png"
+const SHELL = [
+  BASE,
+  BASE + "index.html",
+  BASE + "manifest.json",
+  BASE + "icon-192.png",
+  BASE + "icon-512.png"
 ];
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(FILES_TO_CACHE);
-    })
+self.addEventListener("install", e => {
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(c => c.addAll(SHELL))
   );
   self.skipWaiting();
 });
 
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    })
+self.addEventListener("activate", e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.map(k => k !== CACHE_NAME && caches.delete(k)))
+    )
   );
   self.clients.claim();
 });
 
-self.addEventListener("fetch", (event) => {
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const resClone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, resClone);
-        });
-        return response;
-      })
-      .catch(() => {
-        return caches.match(event.request);
-      })
+self.addEventListener("fetch", e => {
+  const url = new URL(e.request.url);
+
+  // ❌ Never cache JS or JSON logic
+  if (url.pathname.endsWith(".js") || url.pathname.endsWith(".json")) {
+    return;
+  }
+
+  // ✅ Shell-first for HTML
+  if (e.request.mode === "navigate") {
+    e.respondWith(
+      fetch(e.request).catch(() => caches.match(BASE))
+    );
+    return;
+  }
+
+  // Default: network → cache fallback
+  e.respondWith(
+    fetch(e.request).catch(() => caches.match(e.request))
   );
 });
