@@ -1,10 +1,10 @@
-const CACHE_NAME = "hira-app-cache-v1";
+const CACHE_NAME = "hira-app-cache-v2";
 const FILES_TO_CACHE = [
   "/",
-  "index.html",
-  "manifest.json",
-  "icon-192.png",
-  "icon-512.png"
+  "/index.html",
+  "/manifest.json",
+  "/icon-192.png",
+  "/icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
@@ -33,8 +33,18 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request);
-    })
+    fetch(event.request)
+      .then((response) => {
+        // Update cache with new response
+        const resClone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, resClone);
+        });
+        return response;
+      })
+      .catch(() => {
+        // If network fails, use cache
+        return caches.match(event.request);
+      })
   );
 });
