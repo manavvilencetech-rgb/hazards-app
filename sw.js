@@ -1,10 +1,12 @@
 const CACHE_NAME = "hira-app-cache-v2";
+const BASE_PATH = "/hazards-app/";
+
 const FILES_TO_CACHE = [
-  "/",
-  "/index.html",
-  "/manifest.json",
-  "/icon-192.png",
-  "/icon-512.png"
+  BASE_PATH,
+  BASE_PATH + "index.html",
+  BASE_PATH + "manifest.json",
+  BASE_PATH + "icon-192.png",
+  BASE_PATH + "icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
@@ -35,7 +37,6 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Update cache with new response
         const resClone = response.clone();
         caches.open(CACHE_NAME).then((cache) => {
           cache.put(event.request, resClone);
@@ -43,7 +44,6 @@ self.addEventListener("fetch", (event) => {
         return response;
       })
       .catch(() => {
-        // If network fails, use cache
         return caches.match(event.request);
       })
   );
