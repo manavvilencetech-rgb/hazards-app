@@ -607,10 +607,8 @@ if ("serviceWorker" in navigator) {
 <script>
   // Force update when new version is available
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.getRegistrations().then(function(registrations) {
-      for (let registration of registrations) {
-        registration.update();
-      }
+  navigator.serviceWorker.register("/hazards-app/sw.js");
+}
     });
   }
 </script> </body>
