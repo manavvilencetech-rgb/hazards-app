@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="hi">
-<head>
+<head> <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="UTF-8">
   <title>खोजो HAZARDS</title>
 
@@ -600,9 +600,18 @@ function search(){
 }
 
 /* ========= SERVICE WORKER ========= */
-if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("sw.js");
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js");
 }
 </script>
-</body>
+<script>
+  // Force update when new version is available
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+      for (let registration of registrations) {
+        registration.update();
+      }
+    });
+  }
+</script> </body>
 </html>
