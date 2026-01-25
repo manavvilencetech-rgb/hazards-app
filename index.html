@@ -1,46 +1,608 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
   <meta charset="UTF-8">
-  <title>HIRA Hazards App</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>खोजो HAZARDS</title>
+
+  <!-- PWA -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0a2a66">
+
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #0b1c2d;
-      color: #ffffff;
-      margin: 0;
-      padding: 20px;
-      text-align: center;
-    }
-    h1 {
-      color: #00e5ff;
-    }
-    .card {
-      background: #122a42;
-      padding: 15px;
-      border-radius: 10px;
-      margin-top: 20px;
-    }
+    body{background:#f5f2e6;font-family:Arial, sans-serif;margin:0;padding:0}
+    .container{max-width:980px;margin:30px auto;padding:20px}
+    .card{background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.1);padding:20px}
+    .title{font-size:26px;font-weight:700;color:#2b2b2b;margin-bottom:10px}
+    .sub{color:#555;font-size:14px;margin-bottom:20px}
+    .searchBox{display:flex;gap:10px;margin-bottom:15px}
+    .searchBox input{flex:1;padding:12px;border:1px solid #ccc;border-radius:6px;font-size:16px}
+    .searchBox button{padding:12px 20px;border:none;border-radius:6px;background:#1aa65c;color:#fff;font-size:16px;cursor:pointer}
+    .table{width:100%;border-collapse:collapse;margin-top:15px}
+    .table th,.table td{border:1px solid #e0e0e0;padding:10px;text-align:left;font-size:14px}
+    .table th{background:#f0f0f0}
+    .hidden{display:none}
+    .footer{margin-top:20px;color:#888;font-size:12px}
   </style>
 </head>
+
 <body>
+<div class="container">
+  <div class="card">
 
-<h1>HIRA Hazards App</h1>
-<p>✅ App is working</p>
+    <!-- BRAND -->
+    <div style="font-size:24px;font-weight:800;">
+      खोजो <span style="color:#b8860b;">HAZARDS</span>
+    </div>
+    <div style="font-size:13px;color:#2f6fb2;">अब चुटकी में</div>
+    <div class="sub">Enter any activity and get hazards, controls, PPE & risk</div>
 
-<div class="card">
-  <p>Hazard Identification</p>
-  <p>Risk Assessment</p>
-  <p>Risk Matrix</p>
+    <!-- LOCK -->
+    <div id="lockBox" style="text-align:center">
+      <h3>Paid Access</h3>
+      <p><b>Actual Price:</b> ₹999</p>
+      <p style="color:green"><b>Republic Day Offer:</b> ₹599 (25 Days)</p>
+      <input id="accessCode" placeholder="Enter Access Code" style="padding:10px;width:100%;text-align:center">
+      <button onclick="unlock()" style="margin-top:10px;width:100%;padding:12px;background:#1aa65c;color:#fff;border:none;border-radius:6px">Unlock</button>
+      <br><br>
+      <a href="https://forms.gle/rnxWDf8wNa16pb8C8" target="_blank"
+         style="background:#b8860b;color:#fff;padding:10px 18px;border-radius:6px;font-weight:700;text-decoration:none">
+        Get Access Code Now
+      </a>
+    </div>
+
+    <!-- CONTENT -->
+    <div id="content" class="hidden">
+      <div class="searchBox">
+        <input id="activityInput" placeholder="Type activity e.g. Excavation, Crane, Welding">
+        <button onclick="search()">Search</button>
+      </div>
+
+      <table class="table">
+        <thead>
+          <tr><th>Hazard</th><th>Control</th><th>PPE</th><th>Risk</th></tr>
+        </thead>
+        <tbody id="resultBody"></tbody>
+      </table>
+    </div>
+
+    <div class="footer">
+      Note: Screenshot not allowed. One user per browser.
+    </div>
+
+  </div>
 </div>
 
 <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
-  }
-</script>
+/* ========= ACCESS ========= */
+const accessDB={
+  "IMHSE-2601-X9":"2026-02-26",
+  "IMHSE-2601-A2":"2026-02-28",
+  "IMHSE-2601-PAID":"2099-12-31"
+};
 
+/* ========= HAZARD DB (UNCHANGED) ========= */
+const HAZARD_DB = {
+    "excavation": [
+      ["Cave-in","Shoring and sloping","Helmet","High"],
+      ["Fall into pit","Barricading","Safety shoes","High"],
+      ["Underground cable hit","Utility scanning","Insulated gloves","High"],
+      ["Water accumulation","Dewatering","Gumboots","Medium"],
+      ["Vehicle strike","Signalman","Reflective jacket","Medium"]
+    ],
+    "trenching": [
+      ["Trench collapse","Shoring","Helmet","High"],
+      ["Access failure","Ladder access","Safety shoes","Medium"],
+      ["Struck by tools","Tool control","Helmet","Medium"],
+      ["Water ingress","Pump out water","Gumboots","Medium"],
+      ["Poor visibility","Lighting","Helmet","Low"]
+    ],
+    "scaffolding": [
+      ["Fall from height","Guardrails","Full body harness","High"],
+      ["Scaffold collapse","Load control","Helmet","High"],
+      ["Falling objects","Toe boards","Helmet","High"],
+      ["Unsafe access","Proper ladder","Helmet","Medium"],
+      ["Overloading","Display SWL","Safety shoes","Medium"]
+    ],
+    "formwork": [
+      ["Collapse","Design approval","Helmet","High"],
+      ["Struck by material","Controlled removal","Helmet","High"],
+      ["Fall","Edge protection","Harness","High"],
+      ["Nail injury","Housekeeping","Gloves","Medium"],
+      ["Manual handling","Mechanical aid","Safety shoes","Medium"]
+    ],
+    "concreting": [
+      ["Skin burns","Safe handling","Rubber gloves","Medium"],
+      ["Struck by mixer","Barricading","Helmet","High"],
+      ["Slip","Housekeeping","Safety shoes","Low"],
+      ["Noise","Hearing protection","Ear plugs","Low"],
+      ["Manual handling","Proper posture","Safety shoes","Medium"]
+    ],
+    "brickwork": [
+      ["Fall from height","Working platform","Helmet","High"],
+      ["Hand injury","Tool handling","Gloves","Medium"],
+      ["Material fall","Toe boards","Helmet","High"],
+      ["Dust inhalation","Wet method","Mask","Medium"],
+      ["Manual handling","Trolley use","Safety shoes","Medium"]
+    ],
+    "plastering": [
+      ["Fall","Guardrails","Helmet","High"],
+      ["Skin irritation","Safe mix","Gloves","Medium"],
+      ["Eye injury","Eye protection","Goggles","Medium"],
+      ["Dust","Wet mixing","Mask","Low"],
+      ["Overexertion","Work-rest cycle","Safety shoes","Low"]
+    ],
+    "roof work": [
+      ["Fall from roof","Life line","Harness","High"],
+      ["Fragile surface","Cover openings","Helmet","High"],
+      ["Weather exposure","Weather monitoring","Jacket","Medium"],
+      ["Tool drop","Tool lanyard","Helmet","Medium"],
+      ["Heat stress","Hydration","Cap","Medium"]
+    ],
+    "demolition": [
+      ["Structural collapse","Sequence planning","Helmet","High"],
+      ["Flying debris","Barricading","Face shield","High"],
+      ["Dust inhalation","Water spray","Mask","Medium"],
+      ["Noise","Hearing protection","Ear plugs","Medium"],
+      ["Unstable footing","Debris clearance","Safety shoes","Medium"]
+    ],
+    "road work": [
+      ["Vehicle hit","Traffic diversion","Reflective jacket","High"],
+      ["Dust","Water spraying","Mask","Low"],
+      ["Noise","Hearing protection","Ear plugs","Low"],
+      ["Heat stress","Rest breaks","Cap","Medium"],
+      ["Uneven surface","Proper footwear","Safety shoes","Medium"]
+    ],
+    "bitumen work": [
+      ["Burns from hot bitumen","Temperature control","Heat resistant gloves","High"],
+      ["Fire","Fire extinguisher","Face shield","High"],
+      ["Fume inhalation","Ventilation","Respirator","Medium"],
+      ["Slip","Anti-slip mats","Safety shoes","Medium"],
+      ["Traffic hit","Traffic control","Reflective jacket","High"]
+    ],
+    "paving": [
+      ["Hand injury","Tool safety","Gloves","Medium"],
+      ["Back strain","Mechanical aid","Safety shoes","Medium"],
+      ["Slip","Housekeeping","Safety shoes","Low"],
+      ["Dust","Water spray","Mask","Low"],
+      ["Struck by vehicle","Barricade","Reflective jacket","High"]
+    ],
+    "curing": [
+      ["Slip on wet surface","Warning signs","Safety shoes","Low"],
+      ["Chemical irritation","Proper dilution","Gloves","Medium"],
+      ["Heat exposure","Rest breaks","Cap","Medium"],
+      ["Manual handling","Proper lifting","Safety shoes","Low"],
+      ["Trip hazard","Hose management","Safety shoes","Low"]
+    ],
+    "reinforcement fixing": [
+      ["Rebar cuts","Capping ends","Gloves","High"],
+      ["Fall","Guardrails","Helmet","High"],
+      ["Muscle strain","Team lifting","Safety shoes","Medium"],
+      ["Struck by material","Material stacking","Helmet","Medium"],
+      ["Eye injury","Eye protection","Goggles","Medium"]
+    ],
+    "bar bending": [
+      ["Finger crush","Safe distance","Gloves","Medium"],
+      ["Machine entanglement","Guarding","Helmet","High"],
+      ["Noise","Hearing protection","Ear plugs","Low"],
+      ["Flying metal","Face protection","Face shield","Medium"],
+      ["Manual lifting","Mechanical aid","Safety shoes","Medium"]
+    ],
+    "shuttering": [
+      ["Panel fall","Proper support","Helmet","High"],
+      ["Fall from height","Working platform","Harness","High"],
+      ["Hand injury","Tool handling","Gloves","Medium"],
+      ["Pinch point","Safe handling","Gloves","Medium"],
+      ["Overloading","Load limit","Safety shoes","Medium"]
+    ],
+    "stone masonry": [
+      ["Stone fall","Proper stacking","Helmet","High"],
+      ["Hand injury","Tool safety","Gloves","Medium"],
+      ["Dust inhalation","Wet cutting","Mask","Medium"],
+      ["Manual lifting","Team lift","Safety shoes","Medium"],
+      ["Slip","Housekeeping","Safety shoes","Low"]
+    ],
+    "tiling": [
+      ["Knee strain","Knee pads","Knee pads","Low"],
+      ["Tile cuts","Proper cutter","Gloves","Medium"],
+      ["Chemical exposure","Safe adhesive","Gloves","Low"],
+      ["Slip","Clean spills","Safety shoes","Low"],
+      ["Eye injury","Eye protection","Goggles","Medium"]
+    ],
+    "waterproofing": [
+      ["Chemical exposure","MSDS compliance","Gloves","Medium"],
+      ["Slip","Surface cleaning","Safety shoes","Medium"],
+      ["Fire","No ignition source","Fire extinguisher","High"],
+      ["Fume inhalation","Ventilation","Mask","Medium"],
+      ["Skin irritation","Skin protection","Gloves","Low"]
+    ],
+    "painting": [
+      ["Fall","Proper access","Helmet","High"],
+      ["Solvent fumes","Ventilation","Respirator","Medium"],
+      ["Eye splash","Eye protection","Goggles","Medium"],
+      ["Fire","No smoking","Fire extinguisher","High"],
+      ["Skin irritation","Protective wear","Gloves","Low"]
+    ],
+    "false ceiling": [
+      ["Fall from height","Scaffold use","Helmet","High"],
+      ["Material drop","Toe boards","Helmet","High"],
+      ["Sharp edges","Edge protection","Gloves","Medium"],
+      ["Dust","Mask use","Mask","Low"],
+      ["Eye injury","Eye protection","Goggles","Low"]
+    ],
+    "floor grinding": [
+      ["Dust inhalation","Wet grinding","Respirator","Medium"],
+      ["Noise","Hearing protection","Ear plugs","Medium"],
+      ["Flying particles","Guard use","Face shield","High"],
+      ["Electrical shock","Proper earthing","Gloves","High"],
+      ["Slip","Dry surface","Safety shoes","Low"]
+    ],
+    "core cutting": [
+      ["Flying debris","Barricading","Face shield","High"],
+      ["Dust","Water suppression","Mask","Medium"],
+      ["Noise","Hearing protection","Ear plugs","Medium"],
+      ["Electrical shock","Proper grounding","Gloves","High"],
+      ["Fall","Stable platform","Helmet","Medium"]
+    ],
+    "pile driving": [
+      ["Noise","Hearing protection","Ear plugs","High"],
+      ["Vibration exposure","Work rotation","Gloves","Medium"],
+      ["Falling object","Exclusion zone","Helmet","High"],
+      ["Machine instability","Ground check","Helmet","High"],
+      ["Hydraulic failure","Inspection","Helmet","Medium"]
+    ],
+    "retaining wall": [
+      ["Collapse","Engineering design","Helmet","High"],
+      ["Fall","Edge protection","Harness","High"],
+      ["Struck by stone","Controlled placement","Helmet","Medium"],
+      ["Manual handling","Mechanical aid","Safety shoes","Medium"],
+      ["Uneven ground","Proper footing","Safety shoes","Low"]
+    ],
+    "crane": [
+      ["Load fall","Certified rigging","Helmet","High"],
+      ["Crane overturn","Ground stability","Helmet","High"],
+      ["Power line contact","Safe clearance","Gloves","High"],
+      ["Swing radius","Barricading","Safety shoes","Medium"],
+      ["Signal failure","Trained signalman","Reflective jacket","Medium"]
+    ],
+    "hydra": [
+      ["Load instability","Load chart","Helmet","High"],
+      ["Pinch points","Safe distance","Gloves","High"],
+      ["Boom failure","Inspection","Helmet","High"],
+      ["Traffic collision","Barricade","Reflective jacket","Medium"],
+      ["Ground failure","Soil check","Safety shoes","Medium"]
+    ],
+    "excavator": [
+      ["Machine rollover","Stable ground","Helmet","High"],
+      ["Blind spot hit","Spotter","Reflective jacket","High"],
+      ["Hydraulic failure","Maintenance","Helmet","High"],
+      ["Swing collision","Barricade","Safety shoes","Medium"],
+      ["Noise","Hearing protection","Ear plugs","Low"]
+    ],
+    "backhoe loader": [
+      ["Rollover","Slope control","Helmet","High"],
+      ["Pedestrian hit","Spotter","Reflective jacket","High"],
+      ["Bucket drop","Lockout","Helmet","High"],
+      ["Maintenance hazard","Isolation","Gloves","Medium"],
+      ["Noise","Hearing protection","Ear plugs","Low"]
+    ],
+    "forklift": [
+      ["Overturn","Speed control","Helmet","High"],
+      ["Load fall","Proper stacking","Helmet","High"],
+      ["Pedestrian hit","Warning alarm","Reflective jacket","High"],
+      ["Battery acid","Safe charging","Gloves","Medium"],
+      ["Poor visibility","Mirror use","Safety shoes","Medium"]
+    ],
+    "road cutting": [
+      ["Flying debris","Barricading","Face shield","High"],
+      ["Dust inhalation","Water spraying","Mask","Medium"],
+      ["Tool kickback","Proper grip","Gloves","Medium"],
+      ["Traffic hit","Traffic diversion","Reflective jacket","High"],
+      ["Noise","Hearing protection","Ear plugs","Low"]
+    ],
+    "asphalt laying": [
+      ["Burn from hot mix","Temperature monitoring","Heat gloves","High"],
+      ["Fume inhalation","Ventilation","Respirator","Medium"],
+      ["Slip","Proper footwear","Safety shoes","Medium"],
+      ["Traffic collision","Barricading","Reflective jacket","High"],
+      ["Manual strain","Mechanical aid","Safety shoes","Medium"]
+    ],
+    "road marking": [
+      ["Chemical exposure","Proper handling","Gloves","Medium"],
+      ["Traffic hit","Traffic control","Reflective jacket","High"],
+      ["Fume inhalation","Mask use","Mask","Low"],
+      ["Slip on paint","Warning signage","Safety shoes","Low"],
+      ["Eye splash","Eye protection","Goggles","Medium"]
+    ],
+    "manhole work": [
+      ["Oxygen deficiency","Gas testing","Gas detector","High"],
+      ["Fall into manhole","Cover guard","Harness","High"],
+      ["Biological hazard","Hygiene practice","Gloves","Medium"],
+      ["Confined space","Permit system","SCBA","High"],
+      ["Slip","Non-slip footwear","Safety shoes","Low"]
+    ],
+    "sewer cleaning": [
+      ["Toxic gas","Gas monitoring","SCBA","High"],
+      ["Drowning","Lifeline","Harness","High"],
+      ["Infection","Vaccination","Gloves","Medium"],
+      ["Slip","Housekeeping","Safety shoes","Low"],
+      ["Manual strain","Proper posture","Safety shoes","Low"]
+    ],
+    "pipe laying": [
+      ["Trench collapse","Shoring","Helmet","High"],
+      ["Pipe roll","Chocking","Safety shoes","Medium"],
+      ["Manual handling","Team lifting","Safety shoes","Medium"],
+      ["Tool injury","Tool inspection","Gloves","Medium"],
+      ["Slip","Level ground","Safety shoes","Low"]
+    ],
+    "pipe welding": [
+      ["Arc eye","Welding shield","Welding helmet","High"],
+      ["Burns","Protective clothing","Gloves","High"],
+      ["Fire","Fire watch","Fire extinguisher","High"],
+      ["Fume inhalation","Ventilation","Respirator","Medium"],
+      ["Electric shock","Proper earthing","Gloves","High"]
+    ],
+    "pressure testing": [
+      ["Pipe burst","Pressure control","Helmet","High"],
+      ["Flying fittings","Exclusion zone","Face shield","High"],
+      ["Noise","Hearing protection","Ear plugs","Medium"],
+      ["Water spray","Controlled release","Safety shoes","Low"],
+      ["Slip","Drainage","Safety shoes","Low"]
+    ],
+    "valve installation": [
+      ["Hand injury","Tool safety","Gloves","Medium"],
+      ["Valve drop","Lifting aid","Helmet","High"],
+      ["Muscle strain","Proper lifting","Safety shoes","Medium"],
+      ["Pinch points","Clear communication","Gloves","Medium"],
+      ["Slip","Housekeeping","Safety shoes","Low"]
+    ],
+    "pump installation": [
+      ["Electrical shock","Isolation","Insulated gloves","High"],
+      ["Pump fall","Rigging plan","Helmet","High"],
+      ["Alignment injury","Proper tools","Gloves","Medium"],
+      ["Noise","Hearing protection","Ear plugs","Low"],
+      ["Slip","Dry floor","Safety shoes","Low"]
+    ],
+    "electrical conduit laying": [
+      ["Electric shock","Power isolation","Insulated gloves","High"],
+      ["Sharp edges","Deburring","Gloves","Medium"],
+      ["Fall","Proper ladder","Helmet","Medium"],
+      ["Eye injury","Eye protection","Goggles","Low"],
+      ["Manual strain","Ergonomic posture","Safety shoes","Low"]
+    ],
+    "cable pulling": [
+      ["Cable snap","Tension control","Gloves","High"],
+      ["Hand injury","Clear grip","Gloves","Medium"],
+      ["Trip hazard","Cable routing","Safety shoes","Low"],
+      ["Muscle strain","Mechanical rollers","Safety shoes","Medium"],
+      ["Communication failure","Hand signals","Helmet","Low"]
+    ],
+    "panel installation": [
+      ["Electric shock","LOTO","Insulated gloves","High"],
+      ["Panel tip over","Anchoring","Helmet","High"],
+      ["Finger pinch","Safe handling","Gloves","Medium"],
+      ["Eye injury","Eye protection","Goggles","Low"],
+      ["Slip","Dry surface","Safety shoes","Low"]
+    ],
+    "transformer shifting": [
+      ["Load fall","Certified slings","Helmet","High"],
+      ["Crush injury","Exclusion zone","Helmet","High"],
+      ["Electrical hazard","Isolation","Insulated gloves","High"],
+      ["Equipment damage","Slow movement","Safety shoes","Medium"],
+      ["Communication gap","Signalman","Reflective jacket","Medium"]
+    ],
+    "generator installation": [
+      ["Fuel fire","Fire extinguisher","Fire suit","High"],
+      ["Noise","Acoustic enclosure","Ear plugs","Medium"],
+      ["Electrical shock","Grounding","Insulated gloves","High"],
+      ["Manual strain","Lifting aid","Safety shoes","Medium"],
+      ["Exhaust fumes","Ventilation","Mask","Medium"]
+    ],
+    "lighting installation": [
+      ["Fall","Proper access","Helmet","High"],
+      ["Electric shock","Power off","Insulated gloves","High"],
+      ["Tool drop","Tool lanyard","Helmet","Medium"],
+      ["Eye strain","Adequate lighting","Goggles","Low"],
+      ["Slip","Housekeeping","Safety shoes","Low"]
+    ],
+    "earthing work": [
+      ["Electric shock","Isolation","Insulated gloves","High"],
+      ["Manual digging","Tool inspection","Gloves","Medium"],
+      ["Collapse of pit","Shoring","Helmet","Medium"],
+      ["Back strain","Proper posture","Safety shoes","Low"],
+      ["Trip","Barricading","Safety shoes","Low"]
+    ],
+    "fire alarm installation": [
+      ["Electric shock","Power isolation","Insulated gloves","High"],
+      ["Fall","Working platform","Helmet","Medium"],
+      ["Tool injury","Tool safety","Gloves","Medium"],
+      ["Dust inhalation","Mask use","Mask","Low"],
+      ["Eye injury","Eye protection","Goggles","Low"]
+    ],
+    "sprinkler installation": [
+      ["Overhead work","Hard hat","Helmet","High"],
+      ["Pipe fall","Proper support","Helmet","High"],
+      ["Manual strain","Team lift","Safety shoes","Medium"],
+      ["Water leakage","Pressure check","Safety shoes","Low"],
+      ["Slip","Dry floor","Safety shoes","Low"]
+    ],
+    "fire pump testing": [
+      ["High pressure leak","Controlled testing","Helmet","High"],
+      ["Noise","Hearing protection","Ear plugs","Medium"],
+      ["Water spray","Drainage","Safety shoes","Low"],
+      ["Electrical hazard","Isolation","Insulated gloves","High"],
+      ["Slip","Anti-slip footwear","Safety shoes","Low"]
+    ],
+    "crane operation": [
+      ["Load fall","Lift plan approval","Helmet","High"],
+      ["Crane overturn","Ground assessment","Helmet","High"],
+      ["Boom contact with power line","Safe distance","Insulated gloves","High"],
+      ["Dropped objects","Exclusion zone","Helmet","High"],
+      ["Poor signaling","Certified signalman","Reflective jacket","Medium"]
+    ],
+    "hydra operation": [
+      ["Load instability","Proper rigging","Helmet","High"],
+      ["Hydraulic failure","Equipment inspection","Gloves","Medium"],
+      ["Crush zone entry","Barricading","Helmet","High"],
+      ["Overloading","Load chart compliance","Safety shoes","High"],
+      ["Poor visibility","Banksman","Reflective jacket","Medium"]
+    ],
+    "excavator operation": [
+      ["Swing radius hit","Barricading","Helmet","High"],
+      ["Bucket fall","Hydraulic check","Helmet","High"],
+      ["Ground collapse","Soil assessment","Safety shoes","High"],
+      ["Operator fatigue","Work-rest cycle","Seat belt","Medium"],
+      ["Unauthorized access","Cab lock","Helmet","Low"]
+    ],
+    "transit mixer operation": [
+      ["Vehicle collision","Traffic plan","Reflective jacket","High"],
+      ["Mixer drum entanglement","Guarding","Gloves","High"],
+      ["Slippery concrete spill","Immediate cleaning","Safety shoes","Medium"],
+      ["Noise exposure","Cab insulation","Ear plugs","Low"],
+      ["Reversing accident","Reverse alarm","Reflective jacket","Medium"]
+    ],
+    "stacker operation": [
+      ["Load instability","Correct stacking","Helmet","High"],
+      ["Hand crush","Safe grip","Gloves","Medium"],
+      ["Uneven floor","Floor leveling","Safety shoes","Medium"],
+      ["Overloading","Capacity marking","Helmet","High"],
+      ["Fatigue","Task rotation","Safety shoes","Low"]
+    ],
+    "material loading": [
+      ["Falling materials","Proper stacking","Helmet","High"],
+      ["Manual strain","Mechanical aid","Safety shoes","Medium"],
+      ["Vehicle movement","Wheel chocks","Helmet","Medium"],
+      ["Finger pinch","Safe handling","Gloves","Medium"],
+      ["Slip","Clean surface","Safety shoes","Low"]
+    ],
+    "material unloading": [
+      ["Load shift","Securing straps","Helmet","High"],
+      ["Struck by load","Exclusion zone","Helmet","High"],
+      ["Manual handling","Team lifting","Safety shoes","Medium"],
+      ["Trip hazard","Clear pathway","Safety shoes","Low"],
+      ["Communication failure","Hand signals","Helmet","Low"]
+    ],
+    "warehouse stacking": [
+      ["Stack collapse","Height control","Helmet","High"],
+      ["Forklift interaction","Traffic lanes","Reflective jacket","High"],
+      ["Manual lifting","Use pallet jack","Safety shoes","Medium"],
+      ["Slip","Dry floor","Safety shoes","Low"],
+      ["Poor lighting","Adequate lighting","Helmet","Low"]
+    ],
+    "racking installation": [
+      ["Rack collapse","Anchoring","Helmet","High"],
+      ["Fall from height","Platform use","Harness","High"],
+      ["Tool drop","Tool lanyard","Helmet","Medium"],
+      ["Finger injury","Proper tools","Gloves","Medium"],
+      ["Misalignment","Level check","Safety shoes","Low"]
+    ],
+    "confined space entry": [
+      ["Oxygen deficiency","Gas testing","Gas detector","High"],
+      ["Toxic gases","Ventilation","SCBA","High"],
+      ["Engulfment","Entry permit","Harness","High"],
+      ["Poor visibility","Lighting","Helmet","Medium"],
+      ["Rescue failure","Standby team","Harness","High"]
+    ],
+    "tank cleaning": [
+      ["Chemical exposure","MSDS compliance","Chemical suit","High"],
+      ["Toxic fumes","Forced ventilation","SCBA","High"],
+      ["Slip inside tank","Anti-slip boots","Safety shoes","Medium"],
+      ["Fall during entry","Tripod system","Harness","High"],
+      ["Heat stress","Work-rest cycle","Cooling vest","Medium"]
+    ],
+    "painting work": [
+      ["Solvent inhalation","Ventilation","Respirator","Medium"],
+      ["Fire hazard","No ignition source","Fire extinguisher","High"],
+      ["Fall","Stable platform","Helmet","Medium"],
+      ["Skin contact","Protective clothing","Gloves","Medium"],
+      ["Eye splash","Eye protection","Goggles","Medium"]
+    ],
+    "blasting work": [
+      ["Premature blast","Licensed blaster","Helmet","High"],
+      ["Flying fragments","Safe distance","Face shield","High"],
+      ["Ground vibration","Blast design","Helmet","Medium"],
+      ["Noise","Hearing protection","Ear plugs","High"],
+      ["Misfire","Re-entry delay","Helmet","High"]
+    ],
+    "cutting operation": [
+      ["Blade contact","Machine guarding","Cut-resistant gloves","High"],
+      ["Flying sparks","Spark guard","Face shield","Medium"],
+      ["Noise","Hearing protection","Ear plugs","Medium"],
+      ["Fire risk","Fire extinguisher","Fire blanket","High"],
+      ["Eye injury","Eye protection","Goggles","Medium"]
+    ],
+    "grinding operation": [
+      ["Wheel burst","RPM check","Face shield","High"],
+      ["Flying particles","Guarding","Goggles","High"],
+      ["Hand injury","Firm grip","Gloves","Medium"],
+      ["Noise","Hearing protection","Ear plugs","Medium"],
+      ["Fire spark","Spark containment","Fire extinguisher","Medium"]
+    ],
+    "drilling operation": [
+      ["Bit break","Proper selection","Goggles","Medium"],
+      ["Entanglement","No loose clothing","Gloves","High"],
+      ["Flying chips","Chip guard","Face shield","Medium"],
+      ["Noise","Hearing protection","Ear plugs","Low"],
+      ["Hand fatigue","Tool rest","Safety shoes","Low"]
+    ],
+    "welding work": [
+      ["Arc radiation","Welding helmet","Welding helmet","High"],
+      ["Burn injury","Protective clothing","Welding gloves","High"],
+      ["Fire hazard","Fire watch","Fire extinguisher","High"],
+      ["Fume inhalation","Local exhaust","Respirator","Medium"],
+      ["Electric shock","Proper earthing","Insulated gloves","High"]
+    ],
+    "gas cutting": [
+      ["Gas leakage","Leak test","Gas detector","High"],
+      ["Flashback","Flashback arrestor","Welding gloves","High"],
+      ["Fire","Fire watch","Fire extinguisher","High"],
+      ["Burn","Protective clothing","Apron","High"],
+      ["Fume inhalation","Ventilation","Respirator","Medium"]
+    ],
+    "shot blasting": [
+      ["Dust inhalation","Dust collector","Respirator","High"],
+      ["Noise","Acoustic enclosure","Ear plugs","High"],
+      ["Eye injury","Eye protection","Goggles","High"],
+      ["Rebound particles","Protective suit","Blast suit","High"],
+      ["Slip","Clean floor","Safety shoes","Low"]
+    ]
+  };
+
+;
+
+/* ========= LOGIC ========= */
+function unlock(){
+  const code=document.getElementById("accessCode").value.trim();
+  const today=new Date().toISOString().split("T")[0];
+  if(accessDB[code] && today<=accessDB[code]){
+    document.getElementById("lockBox").style.display="none";
+    document.getElementById("content").classList.remove("hidden");
+  } else alert("Invalid or expired access code");
+}
+
+function search(){
+  const input=document.getElementById("activityInput").value.trim().toLowerCase();
+  const body=document.getElementById("resultBody");
+  body.innerHTML="";
+  if(!HAZARD_DB[input]){
+    body.innerHTML="<tr><td colspan='4'>No results found</td></tr>";
+    return;
+  }
+  HAZARD_DB[input].forEach(r=>{
+    const tr=document.createElement("tr");
+    r.forEach(c=>{
+      const td=document.createElement("td");
+      td.textContent=c;
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+}
+
+/* ========= SERVICE WORKER ========= */
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js");
+}
+</script>
 </body>
 </html>
