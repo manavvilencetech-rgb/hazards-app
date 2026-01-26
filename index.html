@@ -81,7 +81,16 @@ const accessDB={
   "IMHSE-2601-PAID":"2099-12-31", 
   "IMHSE-2601-6C":"2026-02-20"
 };
+function checkAccess(code) {
+  const expiryStr = accessDB[code];
+  if (!expiryStr) return false;
 
+  // IST / timezone safe
+  const expiryDate = new Date(expiryStr + "T23:59:59");
+  const now = new Date();
+
+  return now <= expiryDate;
+    }
 /* ========= HAZARD DB (UNCHANGED) ========= */
 const HAZARD_DB = {
     "excavation": [
